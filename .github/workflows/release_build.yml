@@ -1,0 +1,73 @@
+name: Automatic ESP8266 Release Build
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP8266 Core & Libraries
+        run: |
+          arduino-cli core update-index --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+          arduino-cli core install esp8266:esp8266 --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+          arduino-cli lib install "U8g2" "PubSubClient"
+
+      - name: Compile Sketch
+        run: |
+          cd P1_SmartMonitor_ESP8266_OLED
+          arduino-cli compile \
+            --fqbn esp8266:esp8266:generic \
+            --output-dir ../build \
+            .
+
+      - name: Copy Firmware & Update TXT on Main Branch
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          echo "Firmware verzio: ${VERSION}"
+          
+          # Masolas a gyokerbe
+          cp ./build/*.bin ./firmware_${VERSION}.bin
+          
+          # Verzioszam kiirasa a TXT fajlba
+          echo "${VERSION}" > ./latest_firmware.txt
+          
+          # Git beallitasa a bothoz
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Valtas a main agra es frissites
+          git checkout main
+          git pull origin main
+          
+          # Uj binaris es TXT hozzaadasa a Githez
+          git add firmware_${VERSION}.bin latest_firmware.txt
+          git commit -m "Automated build and update latest_firmware.txt for ${VERSION} [skip ci]" || echo "Nincs valtozas"
+          
+          # Push vissza a main agba
+          git push origin main
+
+      - name: Upload Firmware to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./firmware_*.bin
+            ./build/*.bin
+            ./latest_firmware.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

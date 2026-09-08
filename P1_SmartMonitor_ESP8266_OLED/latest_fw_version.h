@@ -1,0 +1,2 @@
+#define LATEST_VERSION       1.16
+
