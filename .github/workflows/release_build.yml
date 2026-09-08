@@ -32,7 +32,7 @@ jobs:
         run: |
           cd P1_SmartMonitor_ESP8266_OLED
           arduino-cli compile \
-            --fqbn "esp8266:esp8266:generic:xtal=80,eesz=4M1M,fm=dout,ip=lm2f,vt=flash" \
+            --fqbn "esp8266:esp8266:generic:xtal=80,eesz=4M1M,ip=lm2f" \
             --output-dir ../build \
             .
 
